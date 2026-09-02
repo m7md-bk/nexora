@@ -1,0 +1,7 @@
+import { describe, expect, it } from "vitest";
+import { calculateCouponDiscount, calculateSubscriptionDates, formatOrderNumber, ManualPaymentAdapter } from "./business";
+
+describe("subscription logic",()=>{it("calculates monthly renewal",()=>{const start=new Date("2026-01-15T00:00:00Z");const result=calculateSubscriptionDates(start,"MONTHLY");expect(result.renewsAt?.toISOString()).toBe("2026-02-15T00:00:00.000Z")});it("does not renew one-time services",()=>{expect(calculateSubscriptionDates(new Date(),"ONE_TIME").renewsAt).toBeNull()})});
+describe("order identifiers",()=>{it("creates a human-readable padded identifier",()=>expect(formatOrderNumber(42,new Date("2026-02-01"))).toBe("NX-2026-000042"))});
+describe("coupon validation",()=>{const base={discountType:"PERCENTAGE" as const,discountValue:20 as never,minimumAmount:null,maximumDiscount:15 as never,isActive:true,startsAt:null,expiresAt:null};it("caps percentage discounts",()=>expect(calculateCouponDiscount(base,100)).toBe(15));it("rejects disabled coupons",()=>expect(()=>calculateCouponDiscount({...base,isActive:false},100)).toThrow("disabled"));it("rejects expired coupons",()=>expect(()=>calculateCouponDiscount({...base,expiresAt:new Date("2020-01-01")},100)).toThrow("expired"))});
+describe("manual payments",()=>{it("never reports an unreviewed payment as paid",async()=>{const adapter=new ManualPaymentAdapter();expect((await adapter.createPayment({amount:10,currency:"JOD",orderId:"1"})).status).toBe("PENDING");expect(await adapter.verifyPayment("proof")).toBe("PENDING")})});
