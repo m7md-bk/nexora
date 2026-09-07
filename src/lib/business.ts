@@ -31,7 +31,9 @@ export interface PaymentAdapter {
 
 export class ManualPaymentAdapter implements PaymentAdapter {
   readonly provider = "manual";
-  async createPayment() { return { status: "PENDING" as const }; }
-  async verifyPayment() { return "PENDING" as const; }
-  async refundPayment() { return "PENDING" as const; }
+  async createPayment(_input: { amount: number; currency: string; orderId: string }) {
+    return { status: "PENDING" as const };
+  }
+  async verifyPayment(_reference: string) { return "PENDING" as const; }
+  async refundPayment(_reference: string, _amount?: number) { return "PENDING" as const; }
 }

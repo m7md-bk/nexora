@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Noto_Kufi_Arabic } from "next/font/google";
+import { Geist } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-sans", subsets: ["latin"] });
-const kufi = Noto_Kufi_Arabic({ variable: "--font-arabic", subsets: ["arabic"] });
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -19,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geist.variable} ${kufi.variable} font-sans`}>
+      <body className={`${geist.variable} font-sans`}>
         {children}
         <Toaster richColors position="top-center" />
       </body>

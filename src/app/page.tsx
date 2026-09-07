@@ -5,6 +5,8 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const services = [
   { icon: PenTool, title: "Social content", text: "On-brand posts, captions, and campaign concepts shaped around your business." },
@@ -23,17 +25,39 @@ const faqs = [
   ["Can I change my package later?", "Yes. You can request an upgrade, downgrade, renewal, pause, or cancellation from your subscription dashboard."],
 ];
 
-export default function Home() {
+async function getPublicContent() {
+  const [hero, servicesFromDb, packagesFromDb, faqsFromDb] = await Promise.all([
+    prisma.heroSection.findFirst({ where: { status: "ACTIVE" }, orderBy: { updatedAt: "desc" } }),
+    prisma.service.findMany({ where: { status: "ACTIVE" }, orderBy: { displayOrder: "asc" } }),
+    prisma.package.findMany({ where: { status: "ACTIVE" }, include: { features: { orderBy: { displayOrder: "asc" } } }, orderBy: { displayOrder: "asc" } }),
+    prisma.fAQ.findMany({ where: { status: "ACTIVE" }, orderBy: { displayOrder: "asc" } }),
+  ]);
+  const icons = [PenTool, CalendarCheck, BarChart3];
+  return {
+    hero: hero ? { title: hero.titleEn, subtitle: hero.subtitleEn, ctaText: hero.ctaTextEn, ctaUrl: hero.ctaUrl } : null,
+    services: servicesFromDb.length ? servicesFromDb.map((item, index) => ({ icon: icons[index % icons.length], title: item.name, text: item.description })) : services,
+    plans: packagesFromDb.length ? packagesFromDb.map(item => ({ name: item.name, price: String(item.price), description: item.description, popular: item.isPopular, features: item.features.map(feature => feature.name) })) : plans,
+    faqs: faqsFromDb.length ? faqsFromDb.map(item => [item.questionEn, item.answerEn] as [string, string]) : faqs,
+  };
+}
+
+export default async function Home() {
+  const currentUser = await getCurrentUser();
+  const user = currentUser ? { name: currentUser.name, role: currentUser.role.name } : null;
+  const content = await getPublicContent();
+  const services = content.services;
+  const plans = content.plans;
+  const faqs = content.faqs;
   return <main className="min-h-screen overflow-hidden bg-[#fcfbf8]">
-    <SiteHeader />
+    <SiteHeader user={user} />
     <section className="relative border-b">
       <div className="surface-grid absolute inset-0 opacity-40" />
       <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.02fr_.98fr] lg:px-8 lg:py-28">
         <div>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700"><Sparkles size={15}/> Built for businesses in Jordan</div>
-          <h1 className="max-w-3xl text-balance text-4xl font-extrabold leading-[1.08] tracking-[-.04em] text-slate-950 sm:text-6xl">Great content, without building a whole content team.</h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">Nexora blends AI speed with human strategy to plan, create, and deliver social content your local business can proudly publish.</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row"><Button size="lg" className="h-12 rounded-xl px-6" asChild><Link href="/pricing">Explore packages <ArrowRight className="ml-2" size={18}/></Link></Button><Button size="lg" variant="outline" className="h-12 rounded-xl bg-white px-6" asChild><Link href="/contact">Talk to our team</Link></Button></div>
+          <h1 className="max-w-3xl text-balance text-4xl font-extrabold leading-[1.08] tracking-[-.04em] text-slate-950 sm:text-6xl">{content.hero?.title ?? "Great content, without building a whole content team."}</h1>
+          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">{content.hero?.subtitle ?? "Nexora blends AI speed with human strategy to plan, create, and deliver social content your local business can proudly publish."}</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row"><Button size="lg" className="h-12 rounded-xl px-6" asChild><Link href={content.hero?.ctaUrl ?? "/pricing"}>{content.hero?.ctaText ?? "Explore packages"} <ArrowRight className="ml-2" size={18}/></Link></Button><Button size="lg" variant="outline" className="h-12 rounded-xl bg-white px-6" asChild><Link href="/contact">Talk to our team</Link></Button></div>
           <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600"><span className="flex items-center gap-2"><BadgeCheck className="text-emerald-600" size={17}/> No long-term contract</span><span className="flex items-center gap-2"><BadgeCheck className="text-emerald-600" size={17}/> Human-reviewed delivery</span></div>
         </div>
         <div className="relative"><div className="absolute -inset-3 rounded-[2.25rem] bg-blue-100/60"/><Image src="/assets/hero-content-workspace.png" alt="Nexora content planning workspace for local businesses" width={900} height={720} className="relative w-full rounded-[2rem] border bg-white object-cover shadow-2xl shadow-blue-950/10" priority /></div>
@@ -44,7 +68,7 @@ export default function Home() {
 
     <section id="services" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
       <div className="max-w-2xl"><p className="text-sm font-bold uppercase tracking-[.18em] text-primary">What we do</p><h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Your content operation, simplified.</h2><p className="mt-4 text-lg text-slate-600">From the next post idea to a ready-to-publish delivery, every step stays clear.</p></div>
-      <div className="mt-10 grid gap-5 md:grid-cols-3">{services.map(({icon:Icon,title,text})=><article key={title} className="group rounded-3xl border bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/5"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-primary"><Icon/></div><h3 className="text-xl font-bold text-slate-900">{title}</h3><p className="mt-3 leading-7 text-slate-600">{text}</p><Link href="/services" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary">Learn more <ArrowRight size={16}/></Link></article>)}</div>
+      <div className="mt-10 grid gap-5 md:grid-cols-3">{content.services.map(({icon:Icon,title,text})=><article key={title} className="group rounded-3xl border bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/5"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-primary"><Icon/></div><h3 className="text-xl font-bold text-slate-900">{title}</h3><p className="mt-3 leading-7 text-slate-600">{text}</p><Link href="/services" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary">Learn more <ArrowRight size={16}/></Link></article>)}</div>
     </section>
 
     <section className="bg-slate-950 py-20 text-white"><div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8"><Image src="/assets/how-it-works.png" alt="Three-step Nexora content process" width={900} height={506} className="rounded-3xl border border-slate-700"/><div><p className="text-sm font-bold uppercase tracking-[.18em] text-blue-400">How it works</p><h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">From brief to publish-ready in three clear steps.</h2><div className="mt-8 space-y-6">{[[Store,"Choose your package","Pick the capacity and services that fit your current goals."],[MessageSquareText,"Send your brief","Share the platform, audience, tone, references, and secure attachments."],[Send,"Review and receive","Track progress, respond to updates, and access every delivery in one place."]].map(([Icon,title,text],i)=><div key={String(title)} className="flex gap-4"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-600 font-bold">{i+1}</div><div><h3 className="font-bold">{String(title)}</h3><p className="mt-1 text-sm leading-6 text-slate-400">{String(text)}</p></div></div>)}</div></div></div></section>

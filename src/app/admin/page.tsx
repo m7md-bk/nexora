@@ -1,18 +1,35 @@
-import { ArrowDownRight, ArrowUpRight, Banknote, CircleCheck, Clock3, ShoppingBag, UserRoundPlus, Users } from "lucide-react";
+import Link from "next/link";
+import { Banknote, CircleCheck, Clock3, ShoppingBag, UserRoundPlus, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard(){
-  const now=new Date(); const monthStart=new Date(now.getFullYear(),now.getMonth(),1); const weekStart=new Date(now.getTime()-7*86400000);
-  const [totalCustomers,activeCustomers,newCustomers,activeSubscriptions,cancelledSubscriptions,totalOrders,pendingOrders,completedOrders,revenue,monthlyRevenue,pendingPayments,completedPayments,refunds,requests,pendingRequests,popular]=await Promise.all([
-    prisma.user.count({where:{role:{name:"CUSTOMER"}}}),prisma.user.count({where:{role:{name:"CUSTOMER"},status:"ACTIVE"}}),prisma.user.count({where:{role:{name:"CUSTOMER"},createdAt:{gte:weekStart}}}),prisma.subscription.count({where:{status:"ACTIVE"}}),prisma.subscription.count({where:{status:"CANCELLED"}}),prisma.order.count(),prisma.order.count({where:{status:"PENDING"}}),prisma.order.count({where:{status:"COMPLETED"}}),prisma.payment.aggregate({_sum:{amount:true},where:{status:"PAID"}}),prisma.payment.aggregate({_sum:{amount:true},where:{status:"PAID",paidAt:{gte:monthStart}}}),prisma.payment.count({where:{status:"PENDING"}}),prisma.payment.count({where:{status:"PAID"}}),prisma.payment.count({where:{status:"REFUNDED"}}),prisma.contentRequest.count(),prisma.contentRequest.count({where:{status:"PENDING"}}),prisma.subscription.groupBy({by:["packageId"],_count:{_all:true},orderBy:{_count:{packageId:"desc"}},take:5})
+export default async function AdminDashboard() {
+  const [customers, subscriptions, orders, revenue, pendingPayments, requests] = await Promise.all([
+    prisma.user.count({ where: { role: { name: "CUSTOMER" } } }),
+    prisma.subscription.count({ where: { status: "ACTIVE" } }),
+    prisma.order.count(),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID" } }),
+    prisma.payment.count({ where: { status: "PENDING" } }),
+    prisma.contentRequest.count({ where: { status: "PENDING" } }),
   ]);
-  const money=(v:unknown)=>Number(v??0).toLocaleString("en-JO",{minimumFractionDigits:2,maximumFractionDigits:2});
-  const cards=[{label:"Total customers",value:totalCustomers,sub:`${activeCustomers} active · ${newCustomers} new`,icon:Users},{label:"Active subscriptions",value:activeSubscriptions,sub:`${cancelledSubscriptions} cancelled`,icon:CircleCheck},{label:"Total orders",value:totalOrders,sub:`${pendingOrders} pending · ${completedOrders} completed`,icon:ShoppingBag},{label:"Total revenue",value:`${money(revenue._sum.amount)} JOD`,sub:`${money(monthlyRevenue._sum.amount)} JOD this month`,icon:Banknote},{label:"Pending payments",value:pendingPayments,sub:`${completedPayments} paid · ${refunds} refunds`,icon:Clock3},{label:"Content requests",value:requests,sub:`${pendingRequests} awaiting action`,icon:UserRoundPlus}];
-  return <div className="mx-auto max-w-7xl"><div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-primary">BUSINESS OVERVIEW</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Dashboard</h1><p className="mt-2 text-slate-500">Live operational data from your Nexora workspace.</p></div><p className="text-sm text-slate-500">Updated just now</p></div><div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cards.map(({label,value,sub,icon:Icon})=><Card key={label} className="rounded-2xl border-0 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-2xl font-extrabold text-slate-950">{value}</p></div><div className="rounded-xl bg-blue-50 p-2.5 text-primary"><Icon size={20}/></div></div><p className="mt-4 text-xs text-slate-500">{sub}</p></CardContent></Card>)}</div><div className="mt-6 grid gap-5 xl:grid-cols-[1.6fr_1fr]"><Card className="rounded-2xl border-0 shadow-sm"><CardHeader><CardTitle className="text-lg">Revenue over time</CardTitle></CardHeader><CardContent><EmptyChart/></CardContent></Card><Card className="rounded-2xl border-0 shadow-sm"><CardHeader><CardTitle className="text-lg">Package popularity</CardTitle></CardHeader><CardContent>{popular.length===0?<Empty label="No subscription data available"/>:<div className="space-y-3">{popular.map((x,i)=><div key={x.packageId} className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-50 text-xs font-bold text-blue-700">{i+1}</span><span className="flex-1 truncate text-sm">Package {x.packageId.slice(-6)}</span><b>{x._count._all}</b></div>)}</div>}</CardContent></Card></div><div className="mt-5 grid gap-5 lg:grid-cols-2"><Card className="rounded-2xl border-0 shadow-sm"><CardHeader><CardTitle className="text-lg">Recent activity</CardTitle></CardHeader><CardContent><Empty label="No activity recorded yet"/></CardContent></Card><Card className="rounded-2xl border-0 shadow-sm"><CardHeader><CardTitle className="text-lg">Attention needed</CardTitle></CardHeader><CardContent className="space-y-3"><Attention label="Pending payments" value={pendingPayments}/><Attention label="Pending orders" value={pendingOrders}/><Attention label="Content requests" value={pendingRequests}/></CardContent></Card></div></div>
+  const cards = [
+    ["Customers", customers, Users],
+    ["Active subscriptions", subscriptions, CircleCheck],
+    ["Orders", orders, ShoppingBag],
+    ["Revenue", `${Number(revenue._sum.amount ?? 0).toFixed(2)} JOD`, Banknote],
+    ["Pending payments", pendingPayments, Clock3],
+    ["Pending requests", requests, UserRoundPlus],
+  ] as const;
+  return (
+    <div className="mx-auto max-w-7xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div><p className="text-sm font-bold text-primary">BUSINESS OVERVIEW</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Dashboard</h1><p className="mt-2 text-slate-500">Live operational data from your Nexora workspace.</p></div>
+        <Button className="rounded-xl" asChild><Link href="/admin/cms">Edit website</Link></Button>
+      </div>
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cards.map(([label, value, Icon]) => <Card key={label} className="rounded-2xl border-0 shadow-sm"><CardContent className="flex items-center gap-4 p-5"><div className="rounded-xl bg-blue-50 p-3 text-primary"><Icon size={20}/></div><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p></div></CardContent></Card>)}</div>
+    </div>
+  );
 }
-function EmptyChart(){return <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-slate-50 text-center"><div className="flex items-end gap-2 text-slate-300"><ArrowDownRight size={36}/><ArrowUpRight size={52}/></div><p className="mt-3 font-semibold">No revenue data available</p><p className="mt-1 text-sm text-slate-500">Paid transactions will appear here.</p></div>}
-function Empty({label}:{label:string}){return <div className="rounded-xl border border-dashed bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">{label}</div>}
-function Attention({label,value}:{label:string,value:number}){return <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"><span className="text-sm font-medium">{label}</span><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold shadow-sm">{value}</span></div>}
