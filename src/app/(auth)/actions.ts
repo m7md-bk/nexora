@@ -8,8 +8,15 @@ import { prisma } from "@/lib/prisma";
 
 export type AuthState = { error?: string };
 
-const loginSchema = z.object({ email: z.string().email().transform(v => v.trim().toLowerCase()), password: z.string().min(8).max(128) });
-const registerSchema = loginSchema.extend({ name: z.string().trim().min(2).max(80), businessName: z.string().trim().min(2).max(120) });
+const loginSchema = z.object({ 
+  email: z.string().email().transform(v => v.trim().toLowerCase()), 
+  password: z.string().min(8).max(128),
+  redirectTo: z.string().optional()
+});
+const registerSchema = loginSchema.extend({ 
+  name: z.string().trim().min(2).max(80), 
+  businessName: z.string().trim().min(2).max(120) 
+});
 
 export async function loginAction(_: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
@@ -18,6 +25,12 @@ export async function loginAction(_: AuthState, formData: FormData): Promise<Aut
   if (!user || user.status !== "ACTIVE" || !(await compare(parsed.data.password, user.passwordHash))) return { error: "Email or password is incorrect." };
   await createSession(user.id);
   await prisma.adminActivityLog.create({ data: { userId: user.id, action: "LOGIN", entity: "User", entityId: user.id } });
+  
+  // Redirect to the intended page or default dashboard
+  const redirectTo = parsed.data.redirectTo;
+  if (redirectTo && redirectTo.startsWith("/")) {
+    redirect(redirectTo);
+  }
   redirect(user.role.name === "CUSTOMER" ? "/dashboard" : "/admin");
 }
 
@@ -36,6 +49,12 @@ export async function registerAction(_: AuthState, formData: FormData): Promise<
     customerProfile: { create: { businessName: parsed.data.businessName } },
   } });
   await createSession(user.id);
+  
+  // Redirect to the intended package or default dashboard
+  const redirectTo = parsed.data.redirectTo;
+  if (redirectTo && redirectTo.startsWith("/")) {
+    redirect(redirectTo);
+  }
   redirect("/dashboard");
 }
 
