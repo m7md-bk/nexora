@@ -3,6 +3,7 @@ import { DashboardShell } from "@/components/dashboard-shell";
 
 const nav = [
   { label: "Dashboard", href: "/admin", icon: "gauge" },
+  { label: "Manage All", href: "/admin/manage-all", icon: "shield" },
   { label: "Customers", href: "/admin/customers", icon: "users" },
   { label: "Packages", href: "/admin/packages", icon: "package" },
   { label: "Services", href: "/admin/services", icon: "boxes" },

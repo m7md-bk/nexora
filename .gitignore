@@ -1,49 +1,50 @@
 ```
-# Environment variables
-.env
+# Next.js build outputs
+.next/
 
 # Dependencies
 node_modules/
 
-# Build artifacts
-dist/
-build/
-target/
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.py.class
-.Python
-env/
-venv/
-.venv/
-.ENV
-.env.*
+# Environment variables
+.env
 .env.local
+*.env.*
 
-# Logs
-*.log
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# IDE
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*.tmp
 
-# OS
-.DS_Store
-Thumbs.db
+# Logs
+*.log
 
-# Compression
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+
+# Build artifacts
+dist/
+build/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Compressed files
 *.zip
 *.gz
 *.tar
@@ -62,63 +63,8 @@ Thumbs.db
 *.Z
 *.lz
 *.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
 
-# MyPy
-.mypy_cache/
-__pycache__/
-
-# Pytest
-.pytest_cache/
-
-# Gradle
-.gradle/
-
-# Node
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Compressed archives
-*.7z
-*.rar
-*.zip
-*.gz
-*.tar
-*.bz2
-*.xz
-*.zst
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.swp
-*.swo
-
-# Build outputs
-*.o
-*.obj
-*.exe
-*.dll
-*.so
-*.a
-*.dylib
-*.jar
-*.war
-*.ear
-
-# Generated files
-generated/
-out/
-bin/
-obj/
-
-# Testing
-coverage/
-.nyc_output/
-istanbul/
+# System files
+.DS_Store
+Thumbs.db
 ```
