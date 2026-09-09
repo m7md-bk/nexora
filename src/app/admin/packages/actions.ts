@@ -57,6 +57,16 @@ export async function updatePackage(packageId: string, formData: FormData) {
   
   const data = packageSchema.partial().parse(Object.fromEntries(formData));
   
+  // Check if slug is being changed and if it already exists
+  if (data.slug) {
+    const existing = await prisma.package.findFirst({
+      where: { slug: data.slug, id: { not: packageId } },
+    });
+    if (existing) {
+      throw new Error("A package with this slug already exists");
+    }
+  }
+  
   const pkg = await prisma.package.update({
     where: { id: packageId },
     data,

@@ -9,7 +9,10 @@ import {
   createPackage,
   togglePackageStatus,
   deletePackage,
+  updatePackageFeatures,
+  updatePackage,
 } from "./actions";
+import type { Package, PackageFeature } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +88,7 @@ export default async function PackagesPage() {
                       <td className="px-6 py-4">{pkg.displayOrder}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
+                          <EditPackageButton pkg={pkg} />
                           <form action={async (formData) => {
                             "use server";
                             await togglePackageStatus(pkg.id);
@@ -131,6 +135,187 @@ export default async function PackagesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function EditPackageButton({ pkg }: { pkg: Package & { features: PackageFeature[] } }) {
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 rounded-lg"
+        onClick={() => {
+          const dialog = document.getElementById(`edit-package-${pkg.id}`) as HTMLDialogElement;
+          if (dialog) dialog.showModal();
+        }}
+      >
+        Edit
+      </Button>
+      <EditPackageDialog pkg={pkg} />
+    </>
+  );
+}
+
+function EditPackageDialog({ pkg }: { pkg: Package & { features: PackageFeature[] } }) {
+  return (
+    <dialog id={`edit-package-${pkg.id}`} className="backdrop:bg-slate-950/50 backdrop:backblur-sm open:animate-in open:fade-in open:zoom-in-95 close:animate-out close:fade-out close:zoom-out-95 rounded-2xl p-0 shadow-2xl">
+      <div className="flex max-h-[90vh] flex-col rounded-2xl bg-white">
+        <div className="flex items-center justify-between border-b p-5">
+          <h2 className="text-lg font-bold">Edit Package</h2>
+          <button
+            onClick={() => (document.getElementById(`edit-package-${pkg.id}`) as HTMLDialogElement)?.close()}
+            className="rounded-lg p-2 hover:bg-slate-100"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="overflow-y-auto p-5">
+          <form action={async (formData: FormData) => {
+            "use server";
+            // Extract features data before processing other fields
+            const featuresData = formData.get("features") as string;
+            const features = featuresData ? JSON.parse(featuresData) : [];
+            
+            // Update package features first
+            await updatePackageFeatures(pkg.id, features);
+            
+            // Then update package main data
+            await updatePackage(pkg.id, formData);
+            
+            revalidatePath("/admin/packages");
+            revalidatePath("/");
+            revalidatePath("/pricing");
+            (document.getElementById(`edit-package-${pkg.id}`) as HTMLDialogElement)?.close();
+          }} className="space-y-4">
+            <input type="hidden" name="features" value={JSON.stringify(pkg.features.map(f => ({ name: f.name, description: f.description ?? undefined, limit: f.limit ?? undefined })))} />
+            
+            <div>
+              <Label htmlFor={`edit-name-${pkg.id}`}>Name</Label>
+              <Input
+                id={`edit-name-${pkg.id}`}
+                name="name"
+                defaultValue={pkg.name}
+                required
+                className="mt-2 rounded-xl"
+              />
+            </div>
+            <div>
+              <Label htmlFor={`edit-slug-${pkg.id}`}>Slug</Label>
+              <Input
+                id={`edit-slug-${pkg.id}`}
+                name="slug"
+                defaultValue={pkg.slug}
+                required
+                pattern="[a-z0-9-]+"
+                className="mt-2 rounded-xl"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor={`edit-price-${pkg.id}`}>Price</Label>
+                <Input
+                  id={`edit-price-${pkg.id}`}
+                  name="price"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  defaultValue={Number(pkg.price)}
+                  required
+                  className="mt-2 rounded-xl"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`edit-currency-${pkg.id}`}>Currency</Label>
+                <Input
+                  id={`edit-currency-${pkg.id}`}
+                  name="currency"
+                  defaultValue={pkg.currency}
+                  className="mt-2 rounded-xl"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor={`edit-description-${pkg.id}`}>Description</Label>
+              <Input
+                id={`edit-description-${pkg.id}`}
+                name="description"
+                defaultValue={pkg.description}
+                required
+                className="mt-2 rounded-xl"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor={`edit-billingInterval-${pkg.id}`}>Billing Interval</Label>
+                <select
+                  id={`edit-billingInterval-${pkg.id}`}
+                  name="billingInterval"
+                  defaultValue={pkg.billingInterval}
+                  className="mt-2 flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="QUARTERLY">Quarterly</option>
+                  <option value="YEARLY">Yearly</option>
+                  <option value="ONE_TIME">One Time</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor={`edit-ctaText-${pkg.id}`}>CTA Text</Label>
+                <Input
+                  id={`edit-ctaText-${pkg.id}`}
+                  name="ctaText"
+                  defaultValue={pkg.ctaText}
+                  className="mt-2 rounded-xl"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`edit-isPopular-${pkg.id}`}
+                  name="isPopular"
+                  defaultChecked={pkg.isPopular}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor={`edit-isPopular-${pkg.id}`} className="mb-0">Most Popular</Label>
+              </div>
+              <div className="flex-1">
+                <Label htmlFor={`edit-displayOrder-${pkg.id}`}>Display Order</Label>
+                <Input
+                  id={`edit-displayOrder-${pkg.id}`}
+                  name="displayOrder"
+                  type="number"
+                  defaultValue={pkg.displayOrder}
+                  className="mt-2 rounded-xl"
+                />
+              </div>
+            </div>
+            
+            <div className="pt-4">
+              <Label>Features</Label>
+              <p className="mt-1 text-xs text-slate-500">Features are saved along with package data.</p>
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => (document.getElementById(`edit-package-${pkg.id}`) as HTMLDialogElement)?.close()}
+                className="rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="rounded-xl">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </dialog>
   );
 }
 
